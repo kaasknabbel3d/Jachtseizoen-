@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18251d">
+<title>Het Jachtseizoen</title>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#101812;--panel:#1b2920;--panel2:#24352a;--ink:#f4f2e8;--muted:#b8c3b7;--accent:#e4b84d;--red:#d95d4f;--blue:#77a9d2;--line:#3b5141}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:16px 14px 10px;text-align:center;background:#18251d;border-bottom:1px solid var(--line)}
+h1{font-size:23px;margin:0 0 4px;letter-spacing:.4px}.sub{color:var(--muted);font-size:12px}
+main{max-width:1050px;margin:auto;padding:12px;display:grid;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px}
+h2{font-size:16px;margin:0 0 9px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--panel2);color:var(--ink)}
+button{cursor:pointer}button.primary{background:var(--accent);color:#1b1b14;border-color:var(--accent);font-weight:700}
+button.danger{background:#512c29;border-color:#85443c}button:disabled{opacity:.4;cursor:not-allowed}
+.stat{background:var(--panel2);padding:8px 10px;border-radius:9px;min-width:85px}
+.stat b{display:block;font-size:19px}.stat small{color:var(--muted)}
+#mapwrap{display:block;overflow:auto;max-height:72vh;min-height:360px;width:100%;border-radius:10px;background:#0c130e;padding:8px;overscroll-behavior:contain} #map{min-height:651px;min-width:676px}
+#map{display:grid;grid-template-columns:repeat(25,26px);grid-auto-rows:26px;gap:1px;width:max-content;margin:auto}
+.tile{width:26px;height:26px;border-radius:3px;display:grid;place-items:center;font-size:13px;font-weight:700;position:relative;color:#1b241b;user-select:none}
+.plain{background:#d6c89d}.forest{background:#65805a}.water{background:#638da6}.station{background:#e0b957}.tower{background:#b8a4d0}.supply{background:#d99b67}
+.tile .label{font-size:10px;line-height:1}.tile .marker{font-size:17px;line-height:1}
+.tile.selected{outline:3px solid #fff;z-index:2}.tile.fugitive{background:#f2d8d2!important}.tile.hunter{background:#b9d4e8!important}
+.legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:12px;margin-top:8px}
+.legend span{display:flex;gap:4px;align-items:center}
+.dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+#log{max-height:170px;overflow:auto;font-size:13px;color:var(--muted);padding-left:18px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px}
+.controls button{width:100%}
+.notice{padding:10px;border-radius:9px;background:#293c2e;border:1px solid #4a674f;margin:8px 0}
+.hidden{display:none!important}.muted{color:var(--muted)}.small{font-size:12px}
+#setupChoices{display:flex;gap:7px;flex-wrap:wrap}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:4px 12px 20px}
+@media(min-width:760px){main{grid-template-columns:minmax(0,1.4fr) minmax(300px,.8fr)}.mapPanel{grid-column:1;grid-row:1 / span 3}}
+</style>
+</head>
+<body>
+<header><h1>🏃 HET JACHTSEIZOEN</h1><div class="sub">Zelfstandige bordspelversie · speel samen op één telefoon</div></header>
+<main>
+<section class="panel mapPanel">
+<h2>Speelkaart</h2><div id="mapwrap"><div id="map"></div></div>
+<div class="legend">
+<span><i class="dot plain"></i> Open veld</span><span><i class="dot forest"></i> Bos (2 acties)</span><span><i class="dot water"></i> Water (niet begaanbaar)</span><span><i class="dot station"></i> Station</span><span><i class="dot tower"></i> Toren</span><span>📦 Voorraad</span>
+</div>
+<p class="small muted">Tik op een aangrenzend vak om te lopen. De kaart is een speelbord, geen echte landkaart.</p>
+</section>
+
+<section class="panel">
+<h2>Spelstatus</h2>
+<div class="row">
+ <div class="stat"><small>Ronde</small><b id="round">0 / 25</b></div>
+ <div class="stat"><small>Beurt</small><b id="turn">Instellen</b></div>
+ <div class="stat"><small>Acties</small><b id="actions">-</b></div>
+ <div class="stat"><small>Spelers</small><b id="players">1 boef · 3 jagers</b></div>
+</div>
+<div id="status" class="notice">Kies eerst de startposities.</div>
+<div id="setup">
+ <h2>Startposities kiezen</h2>
+ <p class="small muted">Kies één van de vijf startpunten voor de boef. Daarna kiezen de drie jagers elk een verschillend startpunt. Tik op een nummer om te kiezen.</p>
+ <div id="setupTitle">Boef kiest startpunt</div><div id="setupChoices"></div>
+ <div class="row" style="margin-top:9px"><button id="nextSetup" class="primary" disabled>Bevestig keuze</button><button id="reset">Nieuw spel</button></div>
+</div>
+<div id="gameControls" class="hidden">
+ <h2 id="phaseTitle">Beurt</h2>
+ <div class="controls">
+  <button id="up">↑ Noord</button><button id="left">← West</button><button id="right">Oost →</button><button id="down">↓ Zuid</button>
+  <button id="stationBtn">🚉 Reis via station (2 acties)</button>
+  <button id="towerBtn">🗼 Gebruik toren (jagers)</button>
+  <button id="supplyBtn">📦 Pak voorraad</button>
+  <button id="endTurn" class="primary">Beurt afronden</button>
+ </div>
+ <div id="extra" class="small muted" style="margin-top:8px"></div>
+ <div id="stationPanel" class="hidden notice"><b>Kies een bestemmingsstation</b><div id="stationChoices" class="row" style="margin-top:7px"></div></div>
+ <div id="towerPanel" class="hidden notice"></div>
+</div>
+</section>
+
+<section class="panel">
+<h2>Spelregels in deze versie</h2>
+<ul class="small">
+<li>De boef krijgt 10 acties in de eerste beurt en daarna 5 per beurt. De drie jagers delen samen 5 acties.</li>
+<li>Bos kost 2 acties per vak. Water is geblokkeerd.</li>
+<li>Alleen jagers kunnen torens gebruiken. Een toren geeft een aanwijzing over de regio van de boef en kan één keer gebruikt worden.</li>
+<li>Elke vijfde ronde wordt de boef exact zichtbaar op de kaart tijdens de jagersbeurt.</li>
+<li>De boef kan via stations reizen voor 2 acties. De reis wordt niet in het logboek gezet.</li>
+<li>Voorraad geeft de boef 2 extra acties en verdwijnt daarna.</li>
+<li>Een jager vangt de boef door op hetzelfde vak te komen of naast de boef op “Pakken” te drukken.</li>
+</ul>
+</section>
+<section class="panel">
+<h2>Gebeurtenissen</h2><ol id="log"></ol>
+</section>
+</main>
+<footer>Bewaar deze webapp op je beginscherm om hem als app te openen.</footer>
+<script>
+const $=id=>document.getElementById(id);
+const W=25, center=12;
+const key=p=>p.q+","+p.r;
+const pos=(q,r)=>({q,r});
+const fugStarts=[pos(-5,1),pos(0,-5),pos(5,-1),pos(0,5),pos(-5,6)];
+const hunterStarts=[pos(-12,0),pos(-6,-6),pos(6,-12),pos(12,-6),pos(6,6)];
+const stations=[[-10,-2],[-8,-6],[-6,0],[-4,7],[-3,-8],[-1,3],[0,-10],[1,8],[3,-3],[4,5],[5,-9],[7,-2],[8,4],[10,-4],[-9,5],[-2,-3],[2,1],[9,0]].map(([q,r])=>pos(q,r));
+const towers=[[-10,5],[-7,2],[-4,-5],[0,0],[3,7],[6,-5],[9,2],[11,-3]].map(([q,r])=>pos(q,r));
+const supplies=[[-8,1],[-3,9],[2,-7],[6,3],[9,-7],[-10,-5]].map(([q,r])=>pos(q,r));
+let terrain={},state={started:false,step:0,selected:null,fug:null,hunters:[],round:0,turn:"setup",actions:0,usedTowers:[],usedSupplies:[],revealed:false,log:[],winner:null};
+function inMap(p){return Math.abs(p.q)<=12&&Math.abs(p.r)<=12&&Math.abs(p.q+p.r)<=18}
+function dist(a,b){return Math.max(Math.abs(a.q-b.q),Math.abs(a.r-b.r),Math.abs(a.q+a.r-b.q-b.r))}
+function buildTerrain(){
+ terrain={};
+ for(let r=-12;r<=12;r++)for(let q=-12;q<=12;q++){let p=pos(q,r);if(!inMap(p))continue;let v=(Math.sin(q*1.7+r*.9)+Math.cos(r*1.3-q*.4));terrain[key(p)]=v>.95?"water":v<-.85?"forest":"plain";}
+ stations.forEach(p=>terrain[key(p)]="station");towers.forEach(p=>terrain[key(p)]="tower");supplies.forEach(p=>{if(terrain[key(p)]!=="station"&&terrain[key(p)]!=="tower")terrain[key(p)]="supply"});
+}
+function log(msg){state.log.unshift("R"+state.round+": "+msg);state.log=state.log.slice(0,35);$("log").innerHTML=state.log.map(x=>"<li>"+x+"</li>").join("")}
+function reset(){state={started:false,step:0,selected:null,fug:null,hunters:[],round:0,turn:"setup",actions:0,usedTowers:[],usedSupplies:[],revealed:false,log:[],winner:null};buildTerrain();render();setupRender();$("log").innerHTML=""}
+function occupied(p){return state.hunters.some(h=>key(h)===key(p))||(state.fug&&key(state.fug)===key(p))}
+function setupRender(){
+ $("setup").classList.toggle("hidden",state.started);$("gameControls").classList.toggle("hidden",!state.started);
+ if(state.started)return;
+ $("setupTitle").textContent=state.step===0?"Boef kiest startpunt":"Jager "+state.step+" kiest startpunt";
+ $("setupChoices").innerHTML="";
+ const opts=state.step===0?fugStarts:hunterStarts;
+ opts.forEach((p,i)=>{let used=state.step>0&&state.hunters.some(h=>key(h)===key(p));let b=document.createElement("button");b.textContent="📍 "+(i+1);b.disabled=used;b.className=key(state.selected||{})===key(p)?"primary":"";b.onclick=()=>{state.selected=p;setupRender();render()};$("setupChoices").append(b)});
+ $("nextSetup").disabled=!state.selected;
+}
+function setupNext(){if(!state.selected)return;if(state.step===0){state.fug=state.selected;log("Boef heeft startpositie gekozen");state.step=1}else{state.hunters.push(state.selected);log("Jager "+state.step+" heeft startpositie gekozen");state.step++;}state.selected=null;if(state.step>3){state.started=true;state.turn="fugitive";state.round=1;state.actions=10;log("Het spel begint. De boef is aan zet.");}setupRender();render()}
+function coordsToCell(p){return {x:center+p.q,y:center+p.r}}
+function render(){
+ $("round").textContent=state.round+" / 25";$("turn").textContent=state.started?(state.turn==="fugitive"?"Boef":"Jagers"):"Instellen";$("actions").textContent=state.started?state.actions:"-";
+ $("players").textContent=state.started?"1 boef · 3 jagers":"1 boef · 3 jagers";
+ let msg=!state.started?"Kies de startposities.":state.winner?state.winner:state.turn==="fugitive"?"Boef: jij bent aan zet. De jagers zien je positie niet.":state.revealed?"Jagers: de boef is deze ronde zichtbaar op de kaart!":"Jagers: boefpositie verborgen.";
+ $("status").textContent=msg;$("phaseTitle").textContent=state.turn==="fugitive"?"Beurt van de boef":"Beurt van de jagers";
+ $("extra").textContent=state.turn==="fugitive"?"Je positie is alleen zichtbaar tijdens de boevenbeurt.":(state.revealed?"De exacte positie blijft deze hele jagersbeurt zichtbaar.":"De boefpositie is verborgen. Gebruik torens voor aanwijzingen.");
+ $("towerBtn").disabled=state.turn!=="hunters"||state.actions<1||towers.every((p,i)=>state.usedTowers.includes(i));
+ $("stationBtn").disabled=state.turn!=="fugitive"||state.actions<2;
+ $("supplyBtn").disabled=state.turn!=="fugitive";
+ $("endTurn").disabled=!!state.winner;
+ const map=$("map");map.innerHTML="";
+ for(let r=-12;r<=12;r++)for(let q=-12;q<=12;q++){let p=pos(q,r);if(!inMap(p))continue;let t=terrain[key(p)],el=document.createElement("div");el.className="tile "+t;el.style.gridColumn=String(q+13);el.style.gridRow=String(r+13);
+ let isF=state.fug&&key(state.fug)===key(p),hunter=state.hunters.findIndex(h=>key(h)===key(p));
+ let stationNo=stations.findIndex(s=>key(s)===key(p))+1,towerNo=towers.findIndex(s=>key(s)===key(p));
+ let supplyNo=supplies.findIndex(s=>key(s)===key(p));
+ if(hunter>=0){el.classList.add("hunter");el.innerHTML='<span class="marker">🚓</span>'}
+ else if(isF&&(state.turn==="fugitive"||state.revealed)){el.classList.add("fugitive");el.innerHTML='<span class="marker">🏃</span>'}
+ else if(stationNo>0)el.innerHTML='<span class="label">S'+stationNo+'</span>';
+ else if(towerNo>=0)el.innerHTML=state.usedTowers.includes(towerNo)?"✓":"🗼";
+ else if(supplyNo>=0&&!state.usedSupplies.includes(supplyNo))el.innerHTML="📦";
+ el.dataset.q=q;el.dataset.r=r;el.onclick=()=>tap(p);map.append(el)}
+}
+function spend(n){state.actions-=n;if(state.actions<0)state.actions=0}
+function move(p){if(!state.started||state.winner||state.actions<1)return;let current=state.turn==="fugitive"?state.fug:state.hunters[activeHunter];if(dist(current,p)!==1)return;
+ let terr=terrain[key(p)];if(terr==="water")return alert("Je kunt niet door water.");let cost=terr==="forest"?2:1;if(state.actions<cost)return alert("Niet genoeg acties.");
+ if(state.turn==="fugitive"){if(state.hunters.some(h=>key(h)===key(p)))return;state.fug=p;spend(cost);if(supplies.some((s,i)=>key(s)===key(p)&&!state.usedSupplies.includes(i))){let i=supplies.findIndex(s=>key(s)===key(p));state.usedSupplies.push(i);state.actions+=2;log("Boef vindt voorraad: +2 acties");}}
+ else{if(key(state.fug)===key(p)){state.hunters[activeHunter]=p;state.winner="De jagers hebben de boef gevangen!";log("De boef is gepakt!")}else{state.hunters[activeHunter]=p;spend(cost);}}
+ render()
+}
+let activeHunter=0;
+function tap(p){if(!state.started||state.winner)return;if(state.turn==="fugitive"){move(p);return}
+ let hi=state.hunters.findIndex(h=>dist(h,p)===1);if(hi>=0){activeHunter=hi;move(p);return}
+ if(state.revealed&&key(p)===key(state.fug)){if(state.hunters.some(h=>dist(h,state.fug)===1)){if(confirm("De boef is zichtbaar. Wil je hem pakken?")){state.winner="De jagers hebben de boef gevangen!";log("De boef is gepakt!");render()}}}
+}
+function endTurn(){
+ if(state.winner)return;
+ if(state.turn==="fugitive"){state.turn="hunters";state.actions=5;state.revealed=state.round%5===0;log(state.revealed?"Ronde "+state.round+": de boef wordt zichtbaar voor de jagers!":"De jagers zijn aan zet.");}
+ else{state.round++;if(state.round>25){state.winner="De boef heeft 25 rondes overleefd!";log("De boef wint!")}else{state.turn="fugitive";state.actions=5;state.revealed=false;log("Nieuwe ronde. De boef is aan zet.")}}
+ render()
+}
+function towerUse(){if(state.turn!=="hunters"||state.actions<1)return;let available=towers.map((p,i)=>({p,i})).filter(x=>!state.usedTowers.includes(x.i));if(!available.length)return alert("Alle torens zijn al gebruikt.");let opts=available.map(x=>"Toren "+(x.i+1)).join(", ");let choice=prompt("Welke toren wil je gebruiken? Beschikbaar: "+opts+"\nVul het nummer in.");let n=Number(choice)-1;let found=available.find(x=>x.i===n);if(!found)return;state.usedTowers.push(n);spend(1);let d=dist(found.p,state.fug);let region=d<=3?"binnen 3 vakken":d<=6?"tussen 4 en 6 vakken":"meer dan 6 vakken";$("towerPanel").textContent="Toren "+(n+1)+" geeft aan: de boef is "+region+" van deze toren verwijderd."; $("towerPanel").classList.remove("hidden");log("Jagers gebruiken toren "+(n+1)+"; aanwijzing: "+region+".");render()}
+function stationsUI(){let box=$("stationPanel");box.classList.toggle("hidden");if(box.classList.contains("hidden"))return;let dest=stations.map((p,i)=>({p,i})).filter(x=>key(x.p)!==key(state.fug)&&!state.hunters.some(h=>key(h)===key(x.p)));$("stationChoices").innerHTML="";dest.forEach(x=>{let b=document.createElement("button");b.textContent="Station "+(x.i+1);b.onclick=()=>{if(state.actions<2)return;state.fug=x.p;spend(2);box.classList.add("hidden");render()};$("stationChoices").append(b)})}
+function supply(){if(state.turn!=="fugitive"||!state.fug)return;let i=supplies.findIndex((p,i)=>key(p)===key(state.fug)&&!state.usedSupplies.includes(i));if(i<0)return alert("Je staat niet op een voorraadplek.");state.usedSupplies.push(i);state.actions+=2;log("Boef pakt voorraad: +2 acties");render()}
+$("nextSetup").onclick=setupNext;$("reset").onclick=()=>{if(confirm("Nieuw spel starten?"))reset()};
+$("endTurn").onclick=endTurn;$("towerBtn").onclick=towerUse;$("stationBtn").onclick=stationsUI;$("supplyBtn").onclick=supply;
+$("up").onclick=()=>stepMove(0,-1);$("down").onclick=()=>stepMove(0,1);$("left").onclick=()=>stepMove(-1,0);$("right").onclick=()=>stepMove(1,0);
+function stepMove(dq,dr){let p=state.turn==="fugitive"?state.fug:state.hunters[activeHunter];move(pos(p.q+dq,p.r+dr))}
+if("serviceWorker"in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
+buildTerrain();render();setupRender();
+</script>
+</body></html>

@@ -1,0 +1,9 @@
+{
+  "name": "Het Jachtseizoen",
+  "short_name": "Jachtseizoen",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#101812",
+  "theme_color": "#18251d",
+  "icons": []
+}
